@@ -84,12 +84,29 @@ these attempts at all). Most likely cause: the "Unity AI Gateway Beta" /
 the same wall, don't burn time on auth configuration there — skip straight
 to the Custom MCP Server tool picker instead.
 
-## Build the Agent Bricks agent
+## Deploy the agent (Export to Databricks Apps)
 
-1. **Agents** > **Agent Bricks** > **Create agent** > Custom LLM.
-2. Under **Tools**, add `mcp-weather-server` via **Custom MCP Server**
-   (see previous section — not a registered MCP Service).
-3. System prompt:
+Rather than building through **Agents > Agent Bricks**, this agent was
+deployed via **AI Playground's Export to Databricks Apps** — Databricks'
+current recommended path for turning a Playground prototype into a real
+deployed agent. It installs the `agent-openai-agents-sdk` template with
+your exact model, system prompt, and tool wiring, generates a real
+`agent_server/agent.py`, and deploys it with a built-in chat UI —
+functionally equivalent to an Agent Bricks agent, just a different product
+surface (lives under **Compute > Apps** alongside the MCP server, not
+under Agents > Agent Bricks).
+
+1. In **AI Playground**, select a tools-enabled model, add
+   `mcp-weather-server` via **Tools** > **Custom MCP Server** (same tool
+   picker used to test it earlier).
+2. Click **+ Add system prompt** and paste in the prompt below.
+3. **Get code** > **Export to Databricks Apps**. Name it (e.g.
+   `agent-weather-server`) and export — Databricks installs the template,
+   wires up permissions to the MCP server automatically, and deploys it.
+4. Click **View Agent** to open the deployed app's own chat UI at
+   `https://<agent-app-url>.aws.databricksapps.com`.
+
+System prompt used:
 
    > You are a weather-prediction assistant. Use `get_current_weather` for
    > "right now" questions, `get_forecast` for multi-day questions, and
@@ -100,20 +117,33 @@ to the Custom MCP Server tool picker instead.
    > reasoning behind a recommendation (the precipitation chance or
    > temperature that triggered it), not just the yes/no answer.
 
-4. Deploy and test with natural-language questions, e.g.:
-   - "Will it rain in Chicago tomorrow?"
-   - "Should I bring a jacket to Austin this weekend?"
-   - "What's the 5-day forecast for Helsinki?"
-
 Capture screenshots of at least 3 different questions and the agent's
 tool calls + final answers for the submission — see **Demo** below.
 
 ## Demo
 
-Tested in AI Playground (Meta Llama 3.3 70B Instruct) via the Custom MCP
-Server tool picker described above.
+### Deployed agent (`agent-weather-server`)
 
-### "Will it rain in Helsinki"
+The real submission artifact — the app exported in the previous section,
+running independently of Playground at its own URL.
+
+**"Is it going to be raining today in Helsinki"** — calls
+`get_current_weather` and returns the current conditions.
+
+![Deployed agent: get_current_weather call and result](docs/screenshots/demo-4-deployed-app-current-weather.png)
+
+**Still need**: 2 more examples from this same deployed app to fully
+cover the "3 different questions" requirement from here rather than from
+Playground below — e.g. "Should I bring a jacket to Austin this weekend?"
+(`get_travel_recommendation`) and "What's the 5-day forecast for Austin?"
+(`get_forecast` standalone, not chained).
+
+### Playground prototyping (earlier testing, Meta Llama 3.3 70B Instruct)
+
+Kept for reference — this is where the MCP server connection and tool
+behavior were first validated, before exporting the agent above.
+
+#### "Will it rain in Helsinki"
 
 The model chains two tool calls on its own: `get_current_weather` first to
 check conditions right now, then — seeing clear skies — proactively calls
@@ -123,7 +153,7 @@ before answering.
 ![get_current_weather call and output](docs/screenshots/demo-1-current-weather.png)
 ![get_forecast call and output](docs/screenshots/demo-2-forecast.png)
 
-### "Do I need umbrella or Jacket"
+#### "Do I need umbrella or Jacket"
 
 The model resolves "tomorrow" to a concrete date and calls
 `get_travel_recommendation` directly, returning the reasoned judgment
@@ -131,11 +161,6 @@ The model resolves "tomorrow" to a concrete date and calls
 forecast numbers.
 
 ![get_travel_recommendation call and output](docs/screenshots/demo-3-travel-recommendation.png)
-
-**Still need**: one more example to satisfy the "at least 3 different
-questions" requirement — e.g. a plain multi-day forecast question ("What's
-the 5-day forecast for Austin?") to show `get_forecast` used on its own
-rather than chained after `get_current_weather`.
 
 ## Not in this version (possible next steps)
 
