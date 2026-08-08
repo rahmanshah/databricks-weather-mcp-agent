@@ -62,19 +62,33 @@ against `http://localhost:8000/mcp` before deploying.
 4. Deploy, then copy the app's URL — the MCP endpoint will be at
    `https://<app-url>/mcp`.
 
-## Register as an external MCP
+## Connect the MCP server to an agent
 
-1. In your workspace: **AI Gateway** > **MCPs** > **Add MCP** / **Register
-   external MCP**.
-2. Paste the app URL from the previous step as the streamable-HTTP
-   endpoint.
-3. Name it (e.g. `weather-mcp`) and save — Databricks will introspect the
-   server and list the 3 tools above.
+**What actually works**: AI Playground's and Agent Bricks' native **Custom
+MCP Server** tool picker (**Tools** > **Add tools** > **Custom MCP
+Server**). Any deployed Databricks App whose name starts with `mcp-` is
+auto-discovered here — select `mcp-weather-server` and its 3 tools become
+available immediately. No connection, no credentials, no separate
+registration step.
+
+**What doesn't work (on Free Edition, as of this testing)**: registering
+the app as a Unity Catalog **MCP Service** via **AI Gateway** > **MCPs** >
+**Create MCP Service**, which proxies calls through a UC HTTP connection.
+Every authentication method offered there — Bearer token (PAT), PAT-based
+OAuth token exchange, OAuth U2M shared, OAuth M2M — was rejected with a
+`401 Unauthorized` coming directly from Databricks' platform layer
+(`server: databricks` in the response), before the request ever reached
+the app (confirmed via the app's own request logs showing nothing for
+these attempts at all). Most likely cause: the "Unity AI Gateway Beta" /
+"Managed MCP Servers preview" isn't enabled on this account. If you hit
+the same wall, don't burn time on auth configuration there — skip straight
+to the Custom MCP Server tool picker instead.
 
 ## Build the Agent Bricks agent
 
 1. **Agents** > **Agent Bricks** > **Create agent** > Custom LLM.
-2. Under **Tools**, add the `weather-mcp` MCP server (all 3 tools).
+2. Under **Tools**, add `mcp-weather-server` via **Custom MCP Server**
+   (see previous section — not a registered MCP Service).
 3. System prompt:
 
    > You are a weather-prediction assistant. Use `get_current_weather` for
@@ -92,7 +106,36 @@ against `http://localhost:8000/mcp` before deploying.
    - "What's the 5-day forecast for Helsinki?"
 
 Capture screenshots of at least 3 different questions and the agent's
-tool calls + final answers for the submission.
+tool calls + final answers for the submission — see **Demo** below.
+
+## Demo
+
+Tested in AI Playground (Meta Llama 3.3 70B Instruct) via the Custom MCP
+Server tool picker described above.
+
+### "Will it rain in Helsinki"
+
+The model chains two tool calls on its own: `get_current_weather` first to
+check conditions right now, then — seeing clear skies — proactively calls
+`get_forecast` to check whether rain is coming over the next few days
+before answering.
+
+![get_current_weather call and output](docs/screenshots/demo-1-current-weather.png)
+![get_forecast call and output](docs/screenshots/demo-2-forecast.png)
+
+### "Do I need umbrella or Jacket"
+
+The model resolves "tomorrow" to a concrete date and calls
+`get_travel_recommendation` directly, returning the reasoned judgment
+(precipitation chance and low temperature vs. thresholds) rather than raw
+forecast numbers.
+
+![get_travel_recommendation call and output](docs/screenshots/demo-3-travel-recommendation.png)
+
+**Still need**: one more example to satisfy the "at least 3 different
+questions" requirement — e.g. a plain multi-day forecast question ("What's
+the 5-day forecast for Austin?") to show `get_forecast` used on its own
+rather than chained after `get_current_weather`.
 
 ## Not in this version (possible next steps)
 
